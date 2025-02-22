@@ -1,4 +1,4 @@
-use iced::widget::{Column, button, column, image, row, text, text_input};
+use iced::widget::{Column, button, column, image, row, text_input};
 
 #[derive(Default)]
 struct State {
@@ -21,10 +21,10 @@ impl State {
     }
 
     fn view(&self) -> Column<Message> {
-        let input = text_input("background path", &self.form).on_input(|text| Message::Edit(text));
+        let input = text_input("background path", &self.form).on_input(Message::Edit);
         let submit = button("submit").on_press(Message::Save);
         let form = row![input, submit];
-        let background = self.path.as_ref().map(|path| image(path));
+        let background = self.path.as_ref().map(image);
         match background {
             Some(background) => column![form, background],
             None => column![form],
@@ -33,5 +33,5 @@ impl State {
 }
 
 fn main() -> iced::Result {
-    iced::run("Background Core", State::update, State::view)
+    iced::run("Icepaper", State::update, State::view)
 }
