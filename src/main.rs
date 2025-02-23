@@ -1,37 +1,46 @@
-use iced::widget::{Column, button, column, image, row, text_input};
+use iced::{
+    Element, Task,
+    widget::{Column, button, image},
+};
 
 #[derive(Default)]
 struct State {
-    form: String,
-    path: Option<String>,
+    image_path: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 enum Message {
-    Edit(String),
-    Save,
+    UpdateImagePath(Option<String>),
+    OpenFilePicker,
 }
 
-impl State {
-    fn update(&mut self, show: Message) {
-        match show {
-            Message::Edit(text) => self.form = text,
-            Message::Save => self.path = Some(self.form.clone()),
+fn update(state: &mut State, message: Message) -> Task<Message> {
+    match message {
+        Message::UpdateImagePath(image_path) => {
+            if image_path.is_some() {
+                state.image_path = image_path;
+            }
+            Task::none()
         }
+        Message::OpenFilePicker => Task::perform(pick_file(), Message::UpdateImagePath),
     }
+}
 
-    fn view(&self) -> Column<Message> {
-        let input = text_input("background path", &self.form).on_input(Message::Edit);
-        let submit = button("submit").on_press(Message::Save);
-        let form = row![input, submit];
-        let background = self.path.as_ref().map(image);
-        match background {
-            Some(background) => column![form, background],
-            None => column![form],
-        }
-    }
+fn view(state: &State) -> Element<Message> {
+    let submit = button("Open").on_press(Message::OpenFilePicker).into();
+    let background = state.image_path.as_ref().map(image).map(Into::into);
+    Column::with_children([submit].into_iter().chain(background)).into()
+}
+
+async fn pick_file() -> Option<String> {
+    rfd::AsyncFileDialog::new()
+        .add_filter("Supported files", &["png"])
+        .pick_file()
+        .await
+        .as_ref()
+        .map(|handle| handle.path().to_string_lossy().into())
 }
 
 fn main() -> iced::Result {
-    iced::run("Icepaper", State::update, State::view)
+    iced::run("Icepaper", update, view)
 }
