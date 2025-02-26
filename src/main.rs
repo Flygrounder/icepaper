@@ -1,7 +1,7 @@
 use iced::{
     Element, Task,
     widget::{button, horizontal_space, image, row},
-    window::{self, Settings},
+    window::{self, Mode, Settings, change_mode},
 };
 
 struct App {
@@ -12,27 +12,30 @@ struct App {
 
 #[derive(Debug, Clone)]
 enum Message {
-    UpdateImagePath(String),
+    Initialize,
+    UpdateBackgroundPath(String),
+    ResetBackgroundPath,
     OpenFilePicker,
-    Clear,
-    Empty,
+    CloseFilePicker,
 }
 
 impl App {
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::UpdateImagePath(image_path) => {
+            Message::Initialize => change_mode(self.background_window_id, Mode::Fullscreen),
+            Message::UpdateBackgroundPath(image_path) => {
                 self.background_path = Some(image_path);
                 Task::none()
             }
-            Message::Clear => {
+            Message::ResetBackgroundPath => {
                 self.background_path = None;
                 Task::none()
             }
             Message::OpenFilePicker => Task::perform(pick_file(), |path| {
-                path.map(Message::UpdateImagePath).unwrap_or(Message::Empty)
+                path.map(Message::UpdateBackgroundPath)
+                    .unwrap_or(Message::CloseFilePicker)
             }),
-            Message::Empty => Task::none(),
+            Message::CloseFilePicker => Task::none(),
         }
     }
 
@@ -40,7 +43,7 @@ impl App {
         if id == self.editor_window_id {
             row![
                 button("Open").on_press(Message::OpenFilePicker),
-                button("Clear").on_press(Message::Clear)
+                button("Clear").on_press(Message::ResetBackgroundPath)
             ]
             .into()
         } else if id == self.background_window_id {
@@ -75,7 +78,9 @@ fn main() -> iced::Result {
         };
         (
             app,
-            editor_task.chain(background_task).map(|_| Message::Empty),
+            editor_task
+                .chain(background_task)
+                .map(|_| Message::Initialize),
         )
     })
 }
