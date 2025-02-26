@@ -1,35 +1,58 @@
 use iced::{
     Element, Task,
-    widget::{Column, button, image},
+    widget::{button, horizontal_space, image, row},
+    window::{self, Settings},
 };
 
-#[derive(Default)]
-struct State {
-    image_path: Option<String>,
+struct App {
+    editor_window_id: window::Id,
+    background_window_id: window::Id,
+    background_path: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 enum Message {
-    UpdateImagePath(Option<String>),
+    UpdateImagePath(String),
     OpenFilePicker,
+    Clear,
+    Empty,
 }
 
-fn update(state: &mut State, message: Message) -> Task<Message> {
-    match message {
-        Message::UpdateImagePath(image_path) => {
-            if image_path.is_some() {
-                state.image_path = image_path;
+impl App {
+    fn update(&mut self, message: Message) -> Task<Message> {
+        match message {
+            Message::UpdateImagePath(image_path) => {
+                self.background_path = Some(image_path);
+                Task::none()
             }
-            Task::none()
+            Message::Clear => {
+                self.background_path = None;
+                Task::none()
+            }
+            Message::OpenFilePicker => Task::perform(pick_file(), |path| {
+                path.map(Message::UpdateImagePath).unwrap_or(Message::Empty)
+            }),
+            Message::Empty => Task::none(),
         }
-        Message::OpenFilePicker => Task::perform(pick_file(), Message::UpdateImagePath),
     }
-}
 
-fn view(state: &State) -> Element<Message> {
-    let submit = button("Open").on_press(Message::OpenFilePicker).into();
-    let background = state.image_path.as_ref().map(image).map(Into::into);
-    Column::with_children([submit].into_iter().chain(background)).into()
+    fn view(&self, id: window::Id) -> Element<Message> {
+        if id == self.editor_window_id {
+            row![
+                button("Open").on_press(Message::OpenFilePicker),
+                button("Clear").on_press(Message::Clear)
+            ]
+            .into()
+        } else if id == self.background_window_id {
+            self.background_path
+                .as_ref()
+                .map(image)
+                .map(Into::into)
+                .unwrap_or_else(|| horizontal_space().into())
+        } else {
+            horizontal_space().into()
+        }
+    }
 }
 
 async fn pick_file() -> Option<String> {
@@ -42,5 +65,17 @@ async fn pick_file() -> Option<String> {
 }
 
 fn main() -> iced::Result {
-    iced::run("Icepaper", update, view)
+    iced::daemon("Icepaper", App::update, App::view).run_with(|| {
+        let (editor_window_id, editor_task) = window::open(Settings::default());
+        let (background_window_id, background_task) = window::open(Settings::default());
+        let app = App {
+            editor_window_id,
+            background_window_id,
+            background_path: None,
+        };
+        (
+            app,
+            editor_task.chain(background_task).map(|_| Message::Empty),
+        )
+    })
 }
