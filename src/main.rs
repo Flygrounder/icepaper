@@ -1,6 +1,6 @@
 use iced::{
     Element, Task,
-    platform_specific::shell::commands::layer_surface::{Anchor, get_layer_surface},
+    platform_specific::shell::commands::layer_surface::{Anchor, Layer, get_layer_surface},
     runtime::platform_specific::wayland::layer_surface::SctkLayerSurfaceSettings,
     widget::{button, horizontal_space, image, row},
     window::{self, Mode, Settings, change_mode},
@@ -74,7 +74,7 @@ fn main() -> iced::Result {
         let background_surface_id = window::Id::unique();
         let background_task = get_layer_surface(SctkLayerSurfaceSettings {
             id: background_surface_id,
-            layer: iced::platform_specific::shell::commands::layer_surface::Layer::Bottom,
+            layer: Layer::Background,
             anchor: Anchor::TOP | Anchor::BOTTOM | Anchor::LEFT | Anchor::RIGHT,
             ..Default::default()
         });
