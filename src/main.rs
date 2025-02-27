@@ -2,7 +2,7 @@ use iced::{
     Element, Task,
     platform_specific::shell::commands::layer_surface::{Anchor, Layer, get_layer_surface},
     runtime::platform_specific::wayland::layer_surface::SctkLayerSurfaceSettings,
-    widget::{button, horizontal_space, image, row},
+    widget::{Row, button, column, horizontal_space, image, row},
     window::{self, Mode, Settings, change_mode},
 };
 
@@ -10,6 +10,7 @@ struct App {
     editor_window_id: window::Id,
     background_surface_id: window::Id,
     background_path: Option<String>,
+    history: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -26,6 +27,9 @@ impl App {
         match message {
             Message::Initialize => change_mode(self.background_surface_id, Mode::Fullscreen),
             Message::UpdateBackgroundPath(image_path) => {
+                if !self.history.contains(&image_path) {
+                    self.history.push(image_path.clone());
+                }
                 self.background_path = Some(image_path);
                 Task::none()
             }
@@ -43,9 +47,21 @@ impl App {
 
     fn view(&self, id: window::Id) -> Element<Message> {
         if id == self.editor_window_id {
-            row![
-                button("Open").on_press(Message::OpenFilePicker),
-                button("Clear").on_press(Message::ResetBackgroundPath)
+            column![
+                row![
+                    button("Open").on_press(Message::OpenFilePicker),
+                    button("Clear").on_press(Message::ResetBackgroundPath)
+                ],
+                Row::from_vec(
+                    self.history
+                        .iter()
+                        .map(|path| column![
+                            image(path).height(100),
+                            button("Use").on_press(Message::UpdateBackgroundPath(path.clone()))
+                        ]
+                        .into())
+                        .collect()
+                )
             ]
             .into()
         } else if id == self.background_surface_id {
@@ -83,6 +99,7 @@ fn main() -> iced::Result {
             editor_window_id,
             background_surface_id,
             background_path: None,
+            history: Vec::new(),
         };
         (
             app,
