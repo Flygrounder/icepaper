@@ -1,13 +1,19 @@
+use std::{
+    sync::mpsc::{Sender, channel},
+    thread,
+};
+
 use iced::{
     Border, Color, ContentFit, Element, Task,
     border::radius,
     widget::{Container, Row, button, column, container::Style, horizontal_space, image, row},
 };
+use icepaper::read_config;
+use icepaper::{Config, write_config};
 
-#[derive(Default)]
 struct App {
-    background_path: Option<String>,
-    history: Vec<String>,
+    config: Config,
+    tx_config: Sender<Config>,
 }
 
 #[derive(Debug, Clone)]
@@ -21,10 +27,11 @@ impl App {
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::UpdateBackgroundPath(image_path) => {
-                if !self.history.contains(&image_path) {
-                    self.history.push(image_path.clone());
+                if !self.config.gallery.contains(&image_path) {
+                    self.config.gallery.push(image_path.clone());
                 }
-                self.background_path = Some(image_path);
+                self.config.background = Some(image_path);
+                self.tx_config.send(self.config.clone()).unwrap();
                 Task::none()
             }
             Message::OpenFilePicker => Task::perform(pick_file(), |path| {
@@ -37,20 +44,22 @@ impl App {
 
     fn view(&self) -> Element<Message> {
         let background: Element<Message> = self
-            .background_path
+            .config
+            .background
             .as_ref()
-            .map(|path| image_cover(path).into())
+            .map(|path| image_cover(path))
             .unwrap_or(horizontal_space().into());
         Container::new(
             column![
                 row![button("Open").on_press(Message::OpenFilePicker),],
                 background,
                 Row::from_vec(
-                    self.history
+                    self.config
+                        .gallery
                         .iter()
                         .map(|path| column![
                             image_cover(path),
-                            button("Use").on_press(Message::UpdateBackgroundPath(path.clone()))
+                            button("Use").on_press(Message::UpdateBackgroundPath(path.into()))
                         ]
                         .spacing(10)
                         .into())
@@ -94,5 +103,13 @@ async fn pick_file() -> Option<String> {
 }
 
 fn main() -> iced::Result {
-    iced::run("Icepaper", App::update, App::view)
+    let (tx_config, rx_config) = channel();
+    let config = read_config().unwrap_or_default();
+    thread::spawn(move || {
+        while let Ok(config) = rx_config.recv() {
+            write_config(&config).unwrap();
+        }
+    });
+    iced::application("Icepaper", App::update, App::view)
+        .run_with(|| (App { config, tx_config }, Task::none()))
 }

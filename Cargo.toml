@@ -3,6 +3,19 @@ name = "icepaper"
 version = "0.1.0"
 edition = "2024"
 
+[[bin]]
+name = "icepaper-editor"
+path = "src/editor.rs"
+
+[[bin]]
+name = "icepaper-daemon"
+path = "src/daemon.rs"
+
 [dependencies]
+async-std = "1.13.0"
 iced = { version = "0.13.1", features = ["image"] }
+iced_layershell = "0.13.5"
 rfd = "0.15.2"
+serde = "1.0.218"
+toml = "0.8.20"
+xdg = "2.5.2"
