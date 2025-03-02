@@ -13,8 +13,10 @@ path = "src/daemon.rs"
 
 [dependencies]
 async-std = "1.13.0"
+bytemuck = "1.21.0"
 iced = { version = "0.13.1", features = ["image"] }
 iced_layershell = "0.13.5"
+image = "0.25.5"
 notify = "8.0.0"
 rfd = "0.15.2"
 serde = "1.0.218"
