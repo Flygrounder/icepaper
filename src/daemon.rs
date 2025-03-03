@@ -1,7 +1,7 @@
 use std::thread;
 
 use async_std::channel::Sender;
-use bytemuck::bytes_of;
+use bytemuck::cast_slice;
 use iced::{
     Element, Subscription, Task,
     futures::{SinkExt, Stream},
@@ -11,11 +11,10 @@ use iced::{
         shader::{
             self, Primitive, Program,
             wgpu::{
-                self, BufferDescriptor, BufferUsages, FragmentState, IndexFormat, MultisampleState,
-                Operations, PipelineLayout, PrimitiveState, RenderPassColorAttachment,
-                RenderPipeline, RenderPipelineDescriptor, ShaderModuleDescriptor,
-                TextureDescriptor, VertexBufferLayout, VertexState, VertexStepMode, include_wgsl,
-                util::{BufferInitDescriptor, DeviceExt, TextureDataOrder},
+                self, BufferUsages, FragmentState, IndexFormat, MultisampleState,
+                Operations, PrimitiveState, RenderPassColorAttachment,
+                RenderPipeline, RenderPipelineDescriptor, VertexBufferLayout, VertexState, VertexStepMode, include_wgsl,
+                util::{BufferInitDescriptor, DeviceExt},
                 vertex_attr_array,
             },
         },
@@ -27,7 +26,6 @@ use iced_layershell::{
     to_layer_message,
 };
 use icepaper::{Config, get_config_path, read_config};
-use image::ImageReader;
 use notify::{RecursiveMode, Watcher};
 
 struct App {
@@ -121,12 +119,12 @@ impl Program<Message> for Scene {
 #[derive(Debug)]
 struct ScenePrimitive {}
 
-const INDEXES: [[u32; 3]; 2] = [[0, 1, 3], [1, 2, 3]];
-const VERTEXES: [[f32; 3]; 4] = [
-    [0.0, 0.0, 0.0],
-    [0.0, 1.0, 0.0],
+const INDEXES: &[u32] = &[0, 1, 2, 2, 3, 0];
+const VERTEXES: &[[f32; 3]] = &[
+    [-1.0, -1.0, 0.0],
+    [1.0, -1.0, 0.0],
     [1.0, 1.0, 0.0],
-    [1.0, 0.0, 0.0],
+    [-1.0, 1.0, 0.0],
 ];
 
 impl Primitive for ScenePrimitive {
@@ -143,12 +141,12 @@ impl Primitive for ScenePrimitive {
             let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
                 label: Some("vertex buffer"),
                 usage: BufferUsages::VERTEX,
-                contents: bytes_of(&VERTEXES),
+                contents: cast_slice(VERTEXES),
             });
             let index_buffer = device.create_buffer_init(&BufferInitDescriptor {
                 label: Some("index buffer"),
                 usage: BufferUsages::INDEX,
-                contents: bytes_of(&INDEXES),
+                contents: cast_slice(INDEXES),
             });
             let module = device.create_shader_module(include_wgsl!("shader.wgsl"));
             let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
@@ -199,15 +197,15 @@ impl Primitive for ScenePrimitive {
             color_attachments: &[Some(RenderPassColorAttachment {
                 ops: Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color {
-                        r: 1.0,
-                        g: 1.0,
+                        r: 0.0,
+                        g: 0.0,
                         b: 0.0,
                         a: 1.0,
                     }),
                     store: wgpu::StoreOp::Store,
                 },
                 resolve_target: None,
-                view: &target,
+                view: target,
             })],
             depth_stencil_attachment: None,
             timestamp_writes: None,
@@ -216,7 +214,7 @@ impl Primitive for ScenePrimitive {
         render_pass.set_pipeline(&data.pipeline);
         render_pass.set_vertex_buffer(0, data.vertex_buffer.slice(..));
         render_pass.set_index_buffer(data.index_buffer.slice(..), IndexFormat::Uint32);
-        render_pass.draw_indexed(0..2, 0, 0..1);
+        render_pass.draw_indexed(0..INDEXES.len() as u32, 0, 0..1);
     }
 }
 

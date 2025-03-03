@@ -2,7 +2,7 @@ use iced::{
     Border, Color, ContentFit, Element, Task,
     border::radius,
     widget::{
-        self, Container, Row, button, column, container::Style, horizontal_space, image, row,
+        Container, Row, button, column, container::Style, image, row,
     },
 };
 use icepaper::read_config;
